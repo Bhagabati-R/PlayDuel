@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { socket } from '../services/socket'
 
 function Home() {
   const navigate = useNavigate()
@@ -20,8 +21,11 @@ function Home() {
   const handleCreateRoom = () => {
     if (!checkName()) return
 
-    const code = Math.random().toString(36).substring(2, 8).toUpperCase()
-    navigate(`/lobby/${code}`, { state: { name: name.trim() , role:'A'} })
+    socket.emit('create-room', name.trim(), (response) => {
+      navigate(`/lobby/${response.code}`, {
+        state: { name: name.trim(), role: 'A' },
+      })
+    })
   }
 
   const handleJoinRoom = () => {
@@ -32,8 +36,21 @@ function Home() {
       return
     }
 
-    setCodeError('')
-    navigate(`/lobby/${roomCode}`, { state: { name: name.trim(),role:'B'} })
+    socket.emit(
+      'join-room',
+      { code: roomCode.trim(), name: name.trim() },
+      (response) => {
+        if (!response.ok) {
+          setCodeError(response.error)
+          return
+        }
+
+        setCodeError('')
+        navigate(`/lobby/${roomCode.trim()}`, {
+          state: { name: name.trim(), role: 'B' },
+        })
+      }
+    )
   }
 
   return (

@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
+import { socket } from '../services/socket'
 
 function Lobby() {
   const { roomCode } = useParams()
@@ -8,8 +10,40 @@ function Lobby() {
   const name = location.state?.name || 'Guest'
   const role = location.state?.role || 'A'
 
+  const [players, setPlayers] = useState([])
+
+  useEffect(() => {
+    socket.emit('get-room', roomCode, (response) => {
+      setPlayers(response.players)
+    })
+
+    const handleRoomUpdate = (data) => {
+      setPlayers(data.players)
+    }
+    const handleGameStarted = (data) => {
+  navigate('/game', {
+    state: {
+      name,
+      role,
+      roomCode,
+      imageUrl: data.imageUrl,
+      order: data.order,
+    },
+  })
+}
+    
+
+    socket.on('room-update', handleRoomUpdate)
+    socket.on('game-started', handleGameStarted)
+
+    return () => {
+      socket.off('room-update', handleRoomUpdate)
+      socket.off('game-started', handleGameStarted)
+    }
+  }, [roomCode, navigate, name, role])
+
   const handleStart = () => {
-    navigate('/game', { state: { name, role, roomCode } })
+    socket.emit('start-game', roomCode)
   }
 
   return (
@@ -20,18 +54,23 @@ function Lobby() {
         <p className="mt-3 text-slate-400">Room code</p>
         <p className="mt-1 text-3xl font-bold tracking-widest text-white">{roomCode}</p>
 
-        <div className="mt-8 rounded-2xl bg-slate-900 p-6">
-          <p className="text-slate-400 text-sm">You are</p>
-          <p className="mt-1 text-xl font-semibold text-white">
-            Player {role}: {name}
+        <div className="mt-8 rounded-2xl bg-slate-900 p-6 space-y-3">
+          <p className="text-slate-400 text-sm">Players in this room</p>
+
+          <p className="text-xl font-semibold text-white">
+            Player A: {players[0] || '...'}
+          </p>
+          <p className="text-xl font-semibold text-white">
+            Player B: {players[1] || 'Waiting for opponent...'}
           </p>
         </div>
 
-        <p className="mt-6 text-slate-400">Waiting for the opponent...</p>
+        <p className="mt-4 text-slate-500 text-sm">You are Player {role}: {name}</p>
 
         <button
           onClick={handleStart}
-          className="mt-6 w-full rounded-lg bg-purple-500 py-3 font-semibold text-white hover:bg-purple-600"
+          disabled={players.length < 2}
+          className="mt-6 w-full rounded-lg bg-purple-500 py-3 font-semibold text-white hover:bg-purple-600 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Start Game
         </button>

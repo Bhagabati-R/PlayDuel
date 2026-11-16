@@ -9,12 +9,11 @@ function shuffle(array) {
   return copy
 }
 
-function Puzzle({ onSolved, disabled }) {
+function Puzzle({ imageUrl, initialOrder, onSolved, onMove, disabled }) {
   const size = 3
-  const imageUrl = '/puzzles/Puzzle.jpg'
 
-  const [order, setOrder] = useState(() =>
-    shuffle(Array.from({ length: size * size }, (_, i) => i))
+  const [order, setOrder] = useState(
+    () => initialOrder || shuffle(Array.from({ length: size * size }, (_, i) => i))
   )
   const [dragFrom, setDragFrom] = useState(null)
 
@@ -26,6 +25,7 @@ function Puzzle({ onSolved, disabled }) {
     ;[newOrder[dragFrom], newOrder[dropPosition]] = [newOrder[dropPosition], newOrder[dragFrom]]
     setOrder(newOrder)
     setDragFrom(null)
+    onMove()
 
     const isSolved = newOrder.every((piece, position) => piece === position)
     if (isSolved) onSolved()
