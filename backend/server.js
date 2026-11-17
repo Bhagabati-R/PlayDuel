@@ -3,13 +3,20 @@ import http from 'http'
 import { Server } from 'socket.io'
 
 const app = express()
-const PORT = 5000
+try {
+  process.loadEnvFile()
+} catch {
+  console.log('No .env file found, using defaults')
+}
+
+const PORT = process.env.PORT || 5000
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
 const TOTAL_IMAGES = 13
 const PIECES = 9
 
 const server = http.createServer(app)
 const io = new Server(server, {
-  cors: { origin: 'http://localhost:5173' },
+ cors: { origin: CLIENT_URL },
 })
 
 const rooms = {}
@@ -185,24 +192,23 @@ io.on('connection', (socket) => {
       io.to(code).emit('results-update', resultsData(room))
     }
   })
-  
+
   socket.on('chat-message', ({ code, text }) => {
-  const room = rooms[code]
-  if (!room) return
+    const room = rooms[code]
+    if (!room) return
 
-  const index = room.players.findIndex((player) => player.id === socket.id)
-  if (index === -1) return
+    const index = room.players.findIndex((player) => player.id === socket.id)
+    if (index === -1) return
 
-  const cleanText = String(text || '').trim().slice(0, 200)
-  if (cleanText === '') return
+    const cleanText = String(text || '').trim().slice(0, 200)
+    if (cleanText === '') return
 
-  io.to(code).emit('chat-message', {
-    name: room.players[index].name,
-    role: index === 0 ? 'A' : 'B',
-    text: cleanText,
+    io.to(code).emit('chat-message', {
+      name: room.players[index].name,
+      role: index === 0 ? 'A' : 'B',
+      text: cleanText,
+    })
   })
-})
-
 
   socket.on('progress', ({ code, correct }) => {
     if (!rooms[code]) return
@@ -210,18 +216,8 @@ io.on('connection', (socket) => {
   })
 
   socket.on('disconnect', () => {
-  console.log('Player disconnected:', socket.id)
+    console.log('Player disconnected:', socket.id)
 
-  for (const code of Object.keys(rooms)) {
-    const room = rooms[code]
-    const player = room.players.find((p) => p.id === socket.id)
-    if (!player) continue
-
-    console.log(`${player.name} left room ${code}, closing it`)
-    socket.to(code).emit('opponent-left', { name: player.name })
-    delete rooms[code]
-  }
-})
     for (const code of Object.keys(rooms)) {
       const room = rooms[code]
       const player = room.players.find((p) => p.id === socket.id)
@@ -232,8 +228,8 @@ io.on('connection', (socket) => {
       delete rooms[code]
     }
   })
-
+})
 
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+  console.log(`Server running on port ${PORT}`) 
+}) 
