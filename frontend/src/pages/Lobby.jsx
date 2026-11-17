@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { socket } from '../services/socket'
+import OpponentLeft from '../components/OpponentLeft'
+import Chat from '../components/Chat'
 
 function Lobby() {
   const { roomCode } = useParams()
@@ -20,18 +22,18 @@ function Lobby() {
     const handleRoomUpdate = (data) => {
       setPlayers(data.players)
     }
+
     const handleGameStarted = (data) => {
-  navigate('/game', {
-    state: {
-      name,
-      role,
-      roomCode,
-      imageUrl: data.imageUrl,
-      order: data.order,
-    },
-  })
-}
-    
+      navigate('/game', {
+        state: {
+          name,
+          role,
+          roomCode,
+          imageUrl: data.imageUrl,
+          order: data.order,
+        },
+      })
+    }
 
     socket.on('room-update', handleRoomUpdate)
     socket.on('game-started', handleGameStarted)
@@ -48,6 +50,8 @@ function Lobby() {
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+      <OpponentLeft />
+      <Chat roomCode={roomCode} myRole={role} />
       <div className="w-full max-w-md text-center">
         <h1 className="text-4xl font-bold text-purple-400">Lobby</h1>
 

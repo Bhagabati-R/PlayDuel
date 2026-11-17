@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 function shuffle(array) {
   const copy = [...array]
@@ -9,13 +9,20 @@ function shuffle(array) {
   return copy
 }
 
-function Puzzle({ imageUrl, initialOrder, onSolved, onMove, disabled }) {
+function Puzzle({ imageUrl, initialOrder, onSolved, onMove, onProgress, disabled }) {
   const size = 3
 
   const [order, setOrder] = useState(
     () => initialOrder || shuffle(Array.from({ length: size * size }, (_, i) => i))
   )
   const [dragFrom, setDragFrom] = useState(null)
+
+  useEffect(() => {
+    if (!onProgress) return
+    const correct = order.filter((piece, position) => piece === position).length
+    onProgress(correct)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order])
 
   const handleDrop = (dropPosition) => {
     if (disabled) return
