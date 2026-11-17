@@ -1,6 +1,9 @@
 import express from 'express'
 import http from 'http'
 import { Server } from 'socket.io'
+import mongoose from 'mongoose'
+import Match from './models/Match.js'
+import cors from 'cors'
 
 const app = express()
 try {
@@ -11,6 +14,11 @@ try {
 
 const PORT = process.env.PORT || 5000
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
+app.use(cors({ origin: CLIENT_URL }))
+
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('MongoDB connected successfully!'))
+  .catch((error) => console.error('MongoDB connection error:', error))
 const TOTAL_IMAGES = 13
 const PIECES = 9
 
@@ -59,6 +67,24 @@ function resultsData(room) {
   }
 }
 
+async function saveMatch(code, room) {
+  try {
+    const { A, B } = room.results
+
+    await Match.create({
+      roomCode: code,
+      image: room.imageUrl,
+      playerA: { name: A.name, seconds: A.seconds, moves: A.moves, score: A.score },
+      playerB: { name: B.name, seconds: B.seconds, moves: B.moves, score: B.score },
+      winner: room.winner.name,
+    })
+
+    console.log(`Match saved for room ${code}`)
+  } catch (error) {
+    console.error('Could not save match:', error.message)
+  }
+}
+
 function startGame(code) {
   const room = rooms[code]
 
@@ -81,6 +107,40 @@ app.get('/', (req, res) => {
   res.send('PlayDuel server is running')
 })
 
+app.get('/api/matches', async (req, res) => {
+  try {
+    const matches = await Match.find().sort({ playedAt: -1 }).limit(20)
+    res.json(matches)
+  } catch (error) {
+    console.error('Could not load matches:', error.message)
+    res.status(500).json({ error: 'Could not load matches' })
+  }
+})
+
+app.get('/api/leaderboard', async (req, res) => {
+  try {
+    const top = await Match.aggregate([
+      { $project: { players: ['$playerA', '$playerB'], playedAt: 1 } },
+      { $unwind: '$players' },
+      { $sort: { 'players.score': -1 } },
+      { $limit: 10 },
+      {
+        $project: {
+          _id: 0,
+          name: '$players.name',
+          score: '$players.score',
+          seconds: '$players.seconds',
+          moves: '$players.moves',
+          playedAt: 1,
+        },
+      },
+    ])
+    res.json(top)
+  } catch (error) {
+    console.error('Could not load leaderboard:', error.message)
+    res.status(500).json({ error: 'Could not load leaderboard' })
+  }
+})
 io.on('connection', (socket) => {
   console.log('Player connected:', socket.id)
 
@@ -163,6 +223,10 @@ io.on('connection', (socket) => {
     }
 
     io.to(code).emit('results-update', resultsData(room))
+
+    if (room.results.A && room.results.B) {
+      saveMatch(code, room)
+    }
   })
 
   socket.on('get-results', (code, callback) => {

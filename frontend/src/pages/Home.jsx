@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { socket } from '../services/socket'
+import { Link } from 'react-router-dom'
 
 function Home() {
   const navigate = useNavigate()
@@ -104,6 +105,14 @@ function Home() {
           </div>
 
         </div>
+
+        <Link
+          to="/leaderboard"
+          className="mt-6 inline-block rounded-lg bg-slate-800 px-6 py-3 font-semibold text-purple-400 hover:bg-slate-700"
+        >
+          🏆 Leaderboard
+        </Link>
+
       </div>
     </div>
   )
